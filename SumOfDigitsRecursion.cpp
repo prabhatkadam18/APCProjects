@@ -1,6 +1,6 @@
 //
 //  SumOfDigitsRecursion.cpp
-//  
+//
 //
 //  Created by Prabhat Kadam on 01/02/19.
 //
@@ -10,13 +10,15 @@ using namespace std;
 
 int fun(int n)
 {
-    if(n/10==0)
+    if(n==0)
     {
-        return n;
+        cout<<endl<<"Sum is: ";
+        return 0;
     }
     else
     {
         int sum=n%10;
+        cout<<sum<<" ";
         sum+=fun(n/10);
         return sum;
     }
