@@ -9,6 +9,8 @@
 #include<vector>
 #include<time.h>
 #include<conio.h>
+#include<bits/stdc++.h>
+#include<windows.h>
 using namespace std;
 int const r=20,c=40;
 char board[r][c];
@@ -226,9 +228,10 @@ void moveDown()
     else board[x1][y1]=' ';
 }
 
+char ch;
+
 void move()   //set required snake and print baord
 {
-    //char ch;
     if(kbhit())
     {
         ch=getch();
@@ -263,7 +266,6 @@ void init()   //initialise board border snake and food
     //setSnake();
 }
 
-char ch;
 
 int main()
 {
@@ -273,7 +275,8 @@ int main()
     while(board[s[0].x][s[0].y]!='#' && board[s[0].x][s[0].y]!='T')
     {
         move();
-        sleep(70);
+        Sleep(70);
+        //for(int k=0;k<10000;k++);
         system("cls");
     }
     cout<<endl<<endl<<"GAME OVER"<<endl<<"\nYour Score: "<<s.size()<<endl;
