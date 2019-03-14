@@ -15,6 +15,7 @@
 #define BASE_ADDRESS "www.chitkara.edu.in"
 #define TEMPFILE "/Users/prabhatkadam/Desktop/temp.txt"
 #define MAX_URL 100
+#define HASH_SIZE 2000
 
 
 FILE *fout;
@@ -62,7 +63,7 @@ void getpage(char *url)
     printf("\n------Got Page------\n");
 }
 
-int testPage(char *url)
+void testPage(char *url)
 {
     int i;
     for(i=0;url[i]!='\0';i++);
@@ -74,12 +75,11 @@ int testPage(char *url)
     if(!system(urlbuffer))
     {
         printf("Valid URL");
-        return 1;
     }
     else
     {
         printf("Invalid URL");
-        return 0;
+        exit(1);
     }
 }
 
@@ -358,23 +358,21 @@ struct Hash
     struct Link *node;
 }*hash[2000];
 
-
-int crawler(int argc,char *argv[])
+void chkCount(int argc,char *argv[])
 {
-    int count_ok=1;      //check for count
     if(argc!=4)
     {
         printf("Count Not as Expected\n");
-        count_ok=0;
-        return 0;
+        exit(1);
     }
     else
     {
         printf("Count is Valid\n");
     }
-    
-    char seed_url[70];
-    strcpy(seed_url,argv[1]);
+}
+
+void chkURL(char *seed_url)
+{
     int base_length;
     for(base_length=0;BASE_ADDRESS[base_length]!='\0';base_length++);
     int same=1;
@@ -388,53 +386,43 @@ int crawler(int argc,char *argv[])
     if(same==0)
     {
         printf("Link Not Same\n");
+        exit(1);
     }
     else
     {
         printf("Link Same\n");
     }
-    
-    if(*argv[2]>'0' && *argv[2]<='4')
+}
+
+void chkDepth(int depth)
+{
+    if(depth>0 && depth<=4)
     {
         printf("Depth Valid\n");
     }
-    
-    testDir(argv[3]);
-    
-    int is_page=testPage(argv[1]);    //test if page exists
-    
-    if(is_page)
+    else
     {
-        getpage(argv[1]);
-        savePage(argv[1],argv[2],argv[3]);
+        printf("Depth Invalid\n");
+        exit(1);
     }
-    
-    
-    //////////////////////////////////
-    
-    
-    
-    
-    
-    //////////////////////////////////
-    
+}
+
+void saveLinks(char **final_links,char *seed_url)
+{
     int file_size=fileSize();
     char contents[file_size*sizeof(char)+1];
-    
     saveFileData(contents);
-    char *links[100000];
     
+    char *links[1000];
     int pos=0,flag=0;
     for(int i=0;i<1000;i++)
     {
         links[i]=(char *)malloc(300*sizeof(char));
-        
-        pos=GetNextURL(contents,argv[1],links[i],pos);
+        pos=GetNextURL(contents,seed_url,links[i],pos);
     }
     
-    char *final_links[100];
     int k=0;
-    for(int i=0;i<1000;i++)
+    for(int i=0 ; i<1000 && k<MAX_URL ; i++)
     {
         flag=0;
         final_links[k]=(char *)malloc(300*sizeof(char));
@@ -447,9 +435,38 @@ int crawler(int argc,char *argv[])
             strcpy(final_links[k++],links[i]);
     }
     
-    //    GOT THE LINKS IN FINAL_LINKS
+    for(int i=0;i<1000;i++)
+    {
+        free(links[i]);
+    }
+}
+
+int crawler(int argc,char *argv[])
+{
+    int depth=(int)(argv[2][0])-'0';
+    char seed_url[70];
+    strcpy(seed_url,argv[1]);
     
-   
+    chkCount(argc,argv);
+    chkURL(seed_url);
+    chkDepth(depth);
+    testDir(argv[3]);
+    
+    testPage(seed_url);    //test if page exists
+    
+    getpage(seed_url);
+    savePage(seed_url,argv[2],argv[3]);
+
+    //////////////////////////////////
+    //GOT PAGE
+    //////////////////////////////////
+    
+    char *final_links[MAX_URL];
+    saveLinks(final_links,seed_url);
+    
+   //    GOT THE LINKS IN FINAL_LINKS
+    
+    //struct Link *link_list;
     
     for(int i=0;i<MAX_URL;i++)
     {
@@ -487,7 +504,7 @@ int crawler(int argc,char *argv[])
     }
     
     
-    for(int i=0;i<2000;i++)       //PRINT LINKED LIST ON COLLISIONS
+    for(int i=0;i<HASH_SIZE;i++)       //PRINT HASHED LINKED LIST ON COLLISIONS
     {
         if(hash[i]!=NULL && hash[i]->node->next!=NULL)
         {
@@ -504,6 +521,13 @@ int crawler(int argc,char *argv[])
     
     
     
+    
+    
+    /*free hash;
+    free link;
+    free np;
+    free*/
+    
     return 0;
 }
 
@@ -513,6 +537,7 @@ int crawler(int argc,char *argv[])
 int main(int argc,char * argv[])
 {
     crawler(argc,argv);
+    
     fclose(fout);
     return 0;
 }
