@@ -85,7 +85,7 @@ void testPage(char *url)
 
 void savePage(char *url,char *depth,char *dir)
 {
-    int static id=1;         // change to int
+    int static id=1;
     char *buffer=(char*)malloc(300*sizeof(char));
     
     char str_id[5];
@@ -93,7 +93,7 @@ void savePage(char *url,char *depth,char *dir)
     strcat(buffer,dir);
     strcat(buffer,str_id);
     strcat(buffer,".txt");
-    fout=fopen(buffer,"a");
+    fout=fopen(buffer,"w");
     printf("----File Created----\n");
     
     fprintf(fout,"%s\n",url);
@@ -157,7 +157,6 @@ void removeWhiteSpace(char* html)
     strcpy(html,buffer);
     free(buffer); free(p);
 }
-
 
 int GetNextURL(char* html, char* urlofthispage, char* result, int pos)
 {
@@ -356,7 +355,7 @@ struct Link
 struct Hash
 {
     struct Link *node;
-}*hash[2000];
+}*hash[HASH_SIZE];
 
 void chkCount(int argc,char *argv[])
 {
@@ -434,10 +433,111 @@ void saveLinks(char **final_links,char *seed_url)
         if(!flag)
             strcpy(final_links[k++],links[i]);
     }
-    
     for(int i=0;i<1000;i++)
     {
-        free(links[i]);
+        //free(links[i]);
+    }
+    printf("----Links Saved----\n");
+
+}
+
+void freeLinks(char **f)
+{
+    for(int i=0;i<MAX_URL;i++)
+        free(f[i]);
+}
+
+void freeHash(struct Hash **hash)
+{
+    for(int i=0;i<HASH_SIZE;i++)
+        hash[i]=NULL;
+}
+
+void insertIntoHash(struct Hash **hash,int key,struct Link* np)
+{
+    if(hash[key]==NULL)
+    {
+        hash[key]=malloc(sizeof(struct Hash));
+        hash[key]->node=malloc(sizeof(struct Link));
+        hash[key]->node->url=malloc(sizeof(char)*300);
+        hash[key]->node=np;
+    }
+}
+
+struct Link* createNode(char *url,int depth,struct Hash **hash)
+{
+    struct Link* np=malloc(sizeof(struct Link));
+    np->url=malloc(sizeof(char)*300);
+    strcpy(np->url,url);
+    np->depth=depth;
+    np->key=keyGenerator(url);
+    np->next=NULL;
+    np->is_visited=0;
+    insertIntoHash(hash,np->key,np);
+    return np;
+}
+
+struct Link* whereToInsert(struct Link *head,int key)
+{
+    int key_changed=0,key_found=0;
+    struct Link* ptr=head;
+    while(ptr->next!=NULL)
+    {
+        if(ptr->key==key)
+        {
+            key_found=1;
+        }
+        if(key_found==1 && ptr->key!=key)
+        {
+            key_changed=1;
+        }
+        if(key_changed==1 && key_found==1)
+        {
+            return ptr->prev;
+        }
+        ptr=ptr->next;
+        //printf("%p\n",ptr);
+    }
+    return ptr;
+}
+
+void insertNode(struct Link **head,char *url,int depth,struct Hash **hash)
+{
+    struct Link *np=NULL,*ptr;
+    if(*head==NULL)
+    {
+        np=createNode(url,depth,hash);
+        np->prev=NULL;
+        np->is_visited=1;
+        *head=np;
+    }
+    else
+    {
+        np=createNode(url,depth,hash);
+        struct Link *temp1=whereToInsert(*head,keyGenerator(url));
+        struct Link *temp2=temp1->next;
+        if(temp2!=NULL)
+        {
+            np->next=temp2;
+            temp1->next=np;
+            np->prev=temp1;
+            temp2->prev=np;
+        }
+        else
+        {
+            temp1->next=np;
+            np->prev=temp1;
+            np->next=NULL;
+        }
+        
+    }
+}
+
+void initializeHash(struct Hash **hash)
+{
+    for(int i=0;i<HASH_SIZE;i++)
+    {
+        hash[i]=NULL;
     }
 }
 
@@ -445,89 +545,66 @@ int crawler(int argc,char *argv[])
 {
     int depth=(int)(argv[2][0])-'0';
     char seed_url[70];
+    char targetdirectory[100];
+    strcpy(targetdirectory,argv[3]);
     strcpy(seed_url,argv[1]);
     
     chkCount(argc,argv);
     chkURL(seed_url);
     chkDepth(depth);
-    testDir(argv[3]);
+    testDir(targetdirectory);
     
-    testPage(seed_url);    //test if page exists
-    
+    testPage(seed_url);
     getpage(seed_url);
     savePage(seed_url,argv[2],argv[3]);
 
-    //////////////////////////////////
     //GOT PAGE
-    //////////////////////////////////
     
     char *final_links[MAX_URL];
     saveLinks(final_links,seed_url);
     
    //    GOT THE LINKS IN FINAL_LINKS
     
-    //struct Link *link_list;
+    initializeHash(hash);
     
+    struct Link *head=NULL;
     for(int i=0;i<MAX_URL;i++)
     {
-        int key;
-        key=keyGenerator(final_links[i]);
-        if(hash[key]==NULL)
-        {
-            hash[key]=(struct Hash*)malloc(sizeof(struct Hash));
-            hash[key]->node=(struct Link*)malloc(sizeof(struct Link));
-            hash[key]->node->url=(char*)malloc(sizeof(char)*300);
-            strcpy(hash[key]->node->url,final_links[i]);
-            hash[key]->node->key=key;
-            hash[key]->node->next=NULL;
-            hash[key]->node->prev=NULL;
-
-        }
-        else
-        {
-            struct Link *ptr;
-            ptr=hash[key]->node;
-            while(ptr->next!=NULL)
-            {
-                printf("%s",ptr->url);
-                ptr=ptr->next;
-            }
-            
-            struct Link *np=(struct Link*)malloc(sizeof(struct Link));
-            np->url=(char*)malloc(sizeof(char)*300);
-            strcpy(np->url,final_links[i]);
-            np->key=key;
-            np->prev=ptr;
-            ptr->next=np;
-            np->next=NULL;
-        }
+        insertNode(&head,final_links[i],depth,hash);
     }
     
-    
-    for(int i=0;i<HASH_SIZE;i++)       //PRINT HASHED LINKED LIST ON COLLISIONS
+    /*for(int i=0;i<MAX_URL;i++)
     {
-        if(hash[i]!=NULL && hash[i]->node->next!=NULL)
-        {
-            struct Link *ptr=hash[i]->node;
-            while(ptr!=NULL)
-            {
-                printf("%d %s\n",ptr->key,ptr->url);
-                ptr=ptr->next;
-            }
-        }
+        printf("%d %s\n",keyGenerator(final_links[i]),final_links[i]);
     }
     
+    for(int i=0;i<HASH_SIZE;i++)      //PRINT HASHED LIST FROM 1ST ENTRY IN HASH
+    {
+        if(hash[i]!=NULL)
+        {
+            struct Link *p=hash[807]->node;
+            while(p!=NULL)
+            {
+                printf("%d ",p->key);
+                p=p->next;
+            }
+            break;
+            //printf("%d ",i);
+        }
+        
+    }*/
+    
+   
     /////  HASHING FINISHED
     
     
     
     
     
-    /*free hash;
-    free link;
-    free np;
-    free*/
-    
+    freeHash(hash);
+    freeLinks(final_links);
+
+    fclose(fout);
     return 0;
 }
 
@@ -538,7 +615,6 @@ int main(int argc,char * argv[])
 {
     crawler(argc,argv);
     
-    fclose(fout);
     return 0;
 }
 
