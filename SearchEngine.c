@@ -1,5 +1,5 @@
 //
-//  FFFFF.c
+//  SearchEngine.c
 //  
 //
 //  Created by Prabhat Kadam on 07/03/19.
@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include<string.h>
+#include<stdbool.h>
 
 #define BASE_ADDRESS "www.chitkara.edu.in"
 #define TEMPFILE "/Users/prabhatkadam/Desktop/temp.txt"
@@ -332,9 +333,30 @@ int NormalizeURL(char* URL)
 
 int keyGenerator(char *link)
 {
-    
+    int count=0;
+    for(int i=0;link[i]!='\0';i++)
+    {
+        count+=(int)link[i];
+    }
+    count/=8;
+    return count;
 }
 
+
+struct Link
+{
+    char *url;
+    int depth;
+    bool is_visited;
+    int key;
+    struct Link *next;
+    struct Link *prev;
+};
+
+struct Hash
+{
+    struct Link *node;
+}*hash[2000];
 
 
 int crawler(int argc,char *argv[])
@@ -391,6 +413,11 @@ int crawler(int argc,char *argv[])
     //////////////////////////////////
     
     
+    
+    
+    
+    //////////////////////////////////
+    
     int file_size=fileSize();
     char contents[file_size*sizeof(char)+1];
     
@@ -420,14 +447,60 @@ int crawler(int argc,char *argv[])
             strcpy(final_links[k++],links[i]);
     }
     
+    //    GOT THE LINKS IN FINAL_LINKS
+    
    
     
-    /*for(int i=0;i<MAX_URL;i++)
+    for(int i=0;i<MAX_URL;i++)
     {
-        printf("%s\n",final_links[i]);
+        int key;
+        key=keyGenerator(final_links[i]);
+        if(hash[key]==NULL)
+        {
+            hash[key]=(struct Hash*)malloc(sizeof(struct Hash));
+            hash[key]->node=(struct Link*)malloc(sizeof(struct Link));
+            hash[key]->node->url=(char*)malloc(sizeof(char)*300);
+            strcpy(hash[key]->node->url,final_links[i]);
+            hash[key]->node->key=key;
+            hash[key]->node->next=NULL;
+            hash[key]->node->prev=NULL;
+
+        }
+        else
+        {
+            struct Link *ptr;
+            ptr=hash[key]->node;
+            while(ptr->next!=NULL)
+            {
+                printf("%s",ptr->url);
+                ptr=ptr->next;
+            }
+            
+            struct Link *np=(struct Link*)malloc(sizeof(struct Link));
+            np->url=(char*)malloc(sizeof(char)*300);
+            strcpy(np->url,final_links[i]);
+            np->key=key;
+            np->prev=ptr;
+            ptr->next=np;
+            np->next=NULL;
+        }
     }
-     */
     
+    
+    for(int i=0;i<2000;i++)       //PRINT LINKED LIST ON COLLISIONS
+    {
+        if(hash[i]!=NULL && hash[i]->node->next!=NULL)
+        {
+            struct Link *ptr=hash[i]->node;
+            while(ptr!=NULL)
+            {
+                printf("%d %s\n",ptr->key,ptr->url);
+                ptr=ptr->next;
+            }
+        }
+    }
+    
+    /////  HASHING FINISHED
     
     
     
